@@ -4,9 +4,9 @@ Dashboard for understanding how topics drive satisfaction
 ## TODO
 
 ### Task 1 - Data extraction
----
+```
 Dorian
----
+```
 Focus on the following airlines:
 - AirFrance
 - Singapour Airlines
