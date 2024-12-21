@@ -5,7 +5,7 @@ Dashboard for understanding how topics drive satisfaction
 
 ### Task 1 - Data extraction
 
-*Dorian*
+> *Dorian*
 
 Focus on the following airlines:
 - AirFrance
@@ -13,7 +13,10 @@ Focus on the following airlines:
 - etc
 
 ### Task 2 - Cleaning Data 
+> *Dorian* & *Auriane*
 
 ### Task 3 - Clustering based on topic (Understand how topics drive satisfaction)
+> *Julien*
 
 ### Task 4 - Dashboard using shiny package in R(sentiment per airline /destination)
+> *Kiran* & *Tonghan*
