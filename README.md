@@ -1,5 +1,5 @@
 # airline-ucg
-Dashboard for understanding how topics drive satisfaction
+Dashboard for understanding how topics drive satisfaction in airlines
 
 ## TODO
 
