@@ -1,9 +1,9 @@
 # airline-ucg
 Dashboard for understanding how topics drive satisfaction in airlines
 
-## TODO
+## 1. TODO
 
-### Task 1 - Data extraction
+### 1.1. Task 1 - Data extraction
 
 > *Dorian*
 
@@ -26,11 +26,18 @@ The reviews are in the format `json` and `csv` and can be found in the following
 - [`crawling/data_csv`](crawling/data_csv)
 - [`crawling/data_json`](crawling/data_json)
 
-### Task 2 - Cleaning Data 
+### 1.2. Task 2 - Cleaning Data 
 > *Dorian* & *Auriane*
 
-### Task 3 - Clustering based on topic (Understand how topics drive satisfaction)
+### 1.3. Task 3 - Clustering based on topic (Understand how topics drive satisfaction)
 > *Julien*
 
-### Task 4 - Dashboard using shiny package in R(sentiment per airline /destination)
+### 1.4. Task 4 - Dashboard using shiny package in R(sentiment per airline /destination)
 > *Kiran* & *Tonghan*
+
+## 2. Installation
+First, clone the repository:
+```bash
+$ git clone https://github.com/dorianb04/airline-ucg
+$ cd airline-ucg
+```
