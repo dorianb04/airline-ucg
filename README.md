@@ -28,6 +28,15 @@ The reviews are in the format `json` and `csv` and can be found in the following
 
 ### 1.2. Task 2 - Cleaning Data 
 > *Dorian* & *Auriane*
+Data cleaned, saved as CSV files in the following folder :
+- ['cleaning'](cleaning)
+The cleaning operations made are :
+- delete lines where review text or rating is empty
+- replace the missing values in numerical column with the mean
+- make sure date columns are in datetime
+- delete lines where travel date or review date is empty
+- delete duplicates
+- delete lines where rating is not between 0 and 5
 
 ### 1.3. Task 3 - Clustering based on topic (Understand how topics drive satisfaction)
 > *Julien*
