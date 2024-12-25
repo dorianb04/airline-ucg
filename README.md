@@ -28,8 +28,10 @@ The reviews are in the format `json` and `csv` and can be found in the following
 
 ### 1.2. Task 2 - Cleaning Data 
 > *Dorian* & *Auriane*
+
 Data cleaned, saved as CSV files in the following folder :
 - ['cleaning'](cleaning)
+  
 The cleaning operations made are :
 - delete lines where review text or rating is empty
 - replace the missing values in numerical column with the mean
