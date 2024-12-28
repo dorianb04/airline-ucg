@@ -43,6 +43,13 @@ The cleaning operations made are :
 ### 1.3. Task 3 - Clustering based on topic (Understand how topics drive satisfaction)
 > *Julien*
 
+Code saved here : 
+https://github.com/dorianb04/airline-ucg/blob/main/Task_3_Clustering_based_on_topic_(Understand_how_topics_drive_satisfaction).ipynb 
+
+- Satisfaction graphs
+- Wordclouds
+- Interactive wordcloud
+
 ### 1.4. Task 4 - Dashboard using shiny package in R(sentiment per airline /destination)
 > *Kiran* & *Tonghan*
 
