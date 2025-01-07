@@ -43,8 +43,8 @@ The cleaning operations made are :
 ### 1.3. Task 3 - Clustering based on topic (Understand how topics drive satisfaction)
 > *Julien*
 
-Code saved here : 
-https://github.com/dorianb04/airline-ucg/blob/main/Task_3_Clustering_based_on_topic_(Understand_how_topics_drive_satisfaction).ipynb 
+Code is available here : 
+[Clustering_based_on_topic.ipynb](https://github.com/dorianb04/airline-ucg/blob/main/Clustering_based_on_topic.ipynb) 
 
 - Satisfaction graphs
 - Wordclouds
