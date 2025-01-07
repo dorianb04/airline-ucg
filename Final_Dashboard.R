@@ -66,43 +66,48 @@ data_g3 <- data %>%
   )
 
 
-generate_wordcloud <- function(data, airline_name) {
+
+generate_wordcloud <- function(data, airline_name, min_bigrams = 2) {
+  pal <- brewer.pal(8, "Dark2")
+  
+  # Filter data for the airline company selected
   airline_data <- data %>% filter(Airline == airline_name)
   
+  # Check if there is data
   if (nrow(airline_data) == 0) {
     plot.new()
     text(0.5, 0.5, "No data available for the selected airline", cex = 1.5)
     return()
   }
   
-  review_text <- paste(airline_data$Review, collapse = " ")
+  # Bigrams creation
+  bigram_counts <- airline_data %>%
+    unnest_tokens(bigram, Review, token = "ngrams", n = 2) %>%
+    separate(bigram, c("word1", "word2"), sep = " ") %>%
+    filter(!word1 %in% stop_words$word, !word2 %in% stop_words$word) %>%
+    count(word1, word2, sort = TRUE) %>%
+    unite(bigram, word1, word2, sep = " ") %>%
+    filter(n > min_bigrams)
   
-  library(tm)
-  library(wordcloud)
+  # Check if there are bigrams which respect criteria
+  if (nrow(bigram_counts) == 0) {
+    plot.new()
+    text(0.5, 0.5, "No bigrams found with the specified minimum frequency", cex = 1.5)
+    return()
+  }
   
-  corpus <- Corpus(VectorSource(review_text))
-  corpus <- tm_map(corpus, content_transformer(tolower))
-  corpus <- tm_map(corpus, removePunctuation)
-  corpus <- tm_map(corpus, removeNumbers)
-  corpus <- tm_map(corpus, removeWords, stopwords("en"))
-  
-  dtm <- TermDocumentMatrix(corpus)
-  matrix <- as.matrix(dtm)
-  word_freq <- sort(rowSums(matrix), decreasing = TRUE)
-  word_freq_df <- data.frame(word = names(word_freq), freq = word_freq)
-  
-  word_freq_df <- word_freq_df[nchar(word_freq_df$word) <= 15, ]  # Limit long words
-  
+  # Wordcloud creation
   wordcloud(
-    words = word_freq_df$word,
-    freq = word_freq_df$freq,
-    min.freq = 2,
+    words = bigram_counts$bigram,
+    freq = bigram_counts$n,
+    min.freq = 100,
     scale = c(5, 1),
-    colors = brewer.pal(8, "Dark2"),
+    colors = pal,
     random.order = FALSE,
-    max.words = 100
+    max.words = 50
   )
 }
+
 
 
 # Function to rank airlines by satisfaction ratio
