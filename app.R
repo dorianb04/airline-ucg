@@ -35,7 +35,12 @@ library(threejs)
 
 
 # Load and preprocess data
-data <- fread("https://github.com/dorianb04/airline-ucg/raw/refs/heads/main/data/data_ugc.csv?download=")
+# check if file is on the local machine
+if (file.exists("data/data_ugc.csv")) {
+  data <- fread("data/data_ugc.csv")
+} else {
+  data <- fread("https://github.com/dorianb04/airline-ucg/raw/refs/heads/main/data/data_ugc.csv?download=")
+}
 
 # Convert 'Review Rate' to date format
 data$date <- format(floor_date(data$`Review Rate`, "month"), "%Y-%m")
@@ -279,7 +284,7 @@ ui <- dashboardPage(
                    solidHeader = TRUE,
                    width = 12,
                    height = "600px",  # Set fixed height
-                   plotlyOutput("clustering_plot", height = "90%")
+                   plotlyOutput("clustering_plot", height="530px")
                  )
           ),
           column(4,
@@ -300,7 +305,7 @@ ui <- dashboardPage(
                      )
                    ),
                    # Rating distribution
-                   plotlyOutput("topic_rating_dist", height = "350px", width = "100%")
+                   plotlyOutput("topic_rating_dist", height = "320px", width = "100%")
                  )
           )
         ),
@@ -435,12 +440,6 @@ ui <- dashboardPage(
 
 # Server function
 server <- function(input, output, session) {
-  
-  cat("\n=== Data Preview ===\n")
-  print(head(data))
-  cat("\nNumber of rows:", nrow(data), "\n")
-  cat("Number of columns:", ncol(data), "\n")
-  cat("Column names:", paste(colnames(data), collapse=", "), "\n\n")
   
   # Reactive filtered data for airline
   filtered_data <- reactive({
@@ -681,7 +680,6 @@ server <- function(input, output, session) {
     )
   })
   
-  # Create rating distribution treemap
   output$topic_rating_dist <- renderPlotly({
     req(input$selected_topic)
     plot_data <- review_clustering()
@@ -691,37 +689,57 @@ server <- function(input, output, session) {
       count(rating) %>%
       mutate(
         percentage = n / sum(n) * 100,
-        label = sprintf("%d★: %.1f%%", rating, percentage),
-        parent = "Ratings"
+        rating_label = paste0(rating, "★")
       ) %>%
-      arrange(desc(rating))  # Arrange by descending rating so 5 stars comes first
+      arrange(desc(rating))  # Keep highest ratings first
     
-    plot_ly(
-      type = "treemap",
-      labels = c("Ratings", paste(topic_data$rating, "★")),
-      parents = c("", rep("Ratings", nrow(topic_data))),
-      values = c(sum(topic_data$n), topic_data$n),
-      text = c("", sprintf("%.1f%%", topic_data$percentage)),
-      textinfo = "label+text",
-      hoverinfo = "label+text",
-      marker = list(
-        colors = c(
-          '#FFFFFF',  # Parent color
-          '#2ecc71',  # 5 stars - green
-          '#87D37C',  # 4 stars - lighter green
-          '#f1c40f',  # 3 stars - yellow
-          '#e67e22',  # 2 stars - orange
-          '#e74c3c'   # 1 star - red
-        )
-      )
-    ) %>%
-      layout(
-        margin = list(t = 0, l = 0, r = 0, b = 0),  # Remove all margins
-        autosize = TRUE,
-        showlegend = FALSE,
-        treemapcolorway = c('#2ecc71', '#87D37C', '#f1c40f', '#e67e22', '#e74c3c')
+    # Create a horizontal bar chart with styled bars
+    fig <- plot_ly() %>%
+      add_trace(
+        data = topic_data,
+        x = ~percentage,
+        y = ~rating_label,
+        type = 'bar',
+        orientation = 'h',
+        marker = list(
+          color = c('#2ecc71', '#87D37C', '#f1c40f', '#e67e22', '#e74c3c'),
+          line = list(color = 'rgba(255,255,255,0.5)', width = 1)
+        ),
+        text = ~sprintf("%.1f%%", percentage),
+        textposition = 'auto',
+        hovertemplate = paste(
+          "<b>%{y}</b><br>",
+          "Count: %{customdata}<br>",
+          "Percentage: %{x:.1f}%",
+          "<extra></extra>"
+        ),
+        customdata = ~n
       ) %>%
-      config(displayModeBar = FALSE)  # Remove the plotly toolbar
+      layout(
+        title = list(
+          text = "Rating Distribution",
+          x = 0.5,
+          xanchor = 'center'
+        ),
+        xaxis = list(
+          title = "Percentage of Reviews",
+          showgrid = TRUE,
+          gridcolor = 'rgba(0,0,0,0.1)',
+          zeroline = FALSE,
+          range = c(0, max(topic_data$percentage) * 1.1)
+        ),
+        yaxis = list(
+          title = "",
+          zeroline = FALSE,
+          showline = FALSE
+        ),
+        showlegend = FALSE,
+        plot_bgcolor = '#FAFAFA',
+        paper_bgcolor = 'white',
+        margin = list(l = 50, r = 30, t = 50, b = 30),
+        bargap = 0.2
+      ) %>%
+      config(displayModeBar = FALSE)
   })
   
   output$airline_globe <- renderGlobe({
