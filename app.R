@@ -35,13 +35,11 @@ library(threejs)
 
 
 # Load and preprocess data
-data <- fread("data/data_ugc.csv")
+data <- fread("https://github.com/dorianb04/airline-ucg/raw/refs/heads/main/data/data_ugc.csv?download=")
 
 # Convert 'Review Rate' to date format
 data$date <- format(floor_date(data$`Review Rate`, "month"), "%Y-%m")
 data$date <- as.Date(paste0(data$date, "-01"), format = "%Y-%m-%d")
-
-print(head(data))
 
 # Summarize data by Airline and date
 data_g1 <- data %>%
@@ -437,6 +435,12 @@ ui <- dashboardPage(
 
 # Server function
 server <- function(input, output, session) {
+  
+  cat("\n=== Data Preview ===\n")
+  print(head(data))
+  cat("\nNumber of rows:", nrow(data), "\n")
+  cat("Number of columns:", ncol(data), "\n")
+  cat("Column names:", paste(colnames(data), collapse=", "), "\n\n")
   
   # Reactive filtered data for airline
   filtered_data <- reactive({
