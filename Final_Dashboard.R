@@ -1,5 +1,5 @@
-install.packages("tm")
-install.packages("wordcloud")
+# install.packages("tm")
+# install.packages("wordcloud")
 
 library(shiny)
 library(shinydashboard)
@@ -12,6 +12,19 @@ library(tidytext)
 library(wordcloud)
 library(RColorBrewer)
 library(stringr)
+library(reticulate)
+library(umap)
+library(plotly)
+
+# Set up Python environment and load the SentenceTransformer model globally
+
+########### CHANGE THIS PATH TO YOUR OWN ANACONDA ENVIRONMENT ##################
+use_python("C:/Users/doria/anaconda3/envs/ml", required = TRUE)
+################################################################################
+py_run_string("
+from sentence_transformers import SentenceTransformer
+model = SentenceTransformer('Alibaba-NLP/gte-base-en-v1.5', trust_remote_code=True)
+")
 
 # Load and preprocess data
 data <- fread("data_ugc.csv")
@@ -35,6 +48,7 @@ data_g1 <- data %>%
     `Check In` = mean(`Check In`, na.rm = TRUE),
     Food = mean(Food, na.rm = TRUE)
   )
+
 data_g2 <- data %>%
   group_by(Airline, date, Departure) %>%
   summarize(
@@ -64,8 +78,6 @@ data_g3 <- data %>%
     `Check In` = mean(`Check In`, na.rm = TRUE),
     Food = mean(Food, na.rm = TRUE)
   )
-
-
 
 generate_wordcloud <- function(data, airline_name, min_bigrams = 2) {
   pal <- brewer.pal(8, "Dark2")
@@ -108,8 +120,6 @@ generate_wordcloud <- function(data, airline_name, min_bigrams = 2) {
   )
 }
 
-
-
 # Function to rank airlines by satisfaction ratio
 rank_satisfaction <- function(data, start_date, end_date) {
   filtered_data <- data %>%
@@ -138,7 +148,29 @@ rank_satisfaction <- function(data, start_date, end_date) {
     theme(axis.text.x = element_text(angle = 45, hjust = 1))
 }
 
-# UI
+# Updated get_embeddings function using the globally loaded model
+get_embeddings <- function(texts) {
+  embeddings_py <- py$model$encode(texts)
+  embeddings_r <- py_to_r(embeddings_py)
+  # Convert to matrix if necessary
+  if (!is.matrix(embeddings_r)) {
+    embeddings_r <- matrix(unlist(embeddings_r), nrow = length(texts), byrow = TRUE)
+  }
+  return(embeddings_r)
+}
+
+# Create UMAP clustering function
+create_clustering <- function(embeddings, n_neighbors = 15, min_dist = 0.1) {
+  umap_config <- umap.defaults
+  umap_config$n_neighbors <- n_neighbors
+  umap_config$min_dist <- min_dist
+  
+  umap_result <- umap(embeddings, config = umap_config)
+  return(umap_result)
+}
+
+##########################################
+# UI Definition
 ui <- dashboardPage(
   dashboardHeader(title = 'Choose your Airline'),
   dashboardSidebar(
@@ -204,9 +236,19 @@ ui <- dashboardPage(
                    plotOutput("rating_feature_plot")
                  )
           )
+        ),
+        fluidRow(
+          column(12,
+                 box(
+                   title = "Review Clustering", status = "primary", solidHeader = TRUE,
+                   width = 12,
+                   sliderInput("sample_size", "Number of Reviews to Sample:", 
+                               min = 10, max = 500, value = 100, step = 10),
+                   plotlyOutput("clustering_plot")
+                 )
+          )
         )
       ),
-      
       # Departure Analysis tab
       tabItem(
         tabName = 'departure',
@@ -249,7 +291,6 @@ ui <- dashboardPage(
           )
         )
       ),
-      
       # Destination Analysis tab
       tabItem(
         tabName = 'destination',
@@ -315,7 +356,7 @@ server <- function(input, output) {
   
   filtered_data_dep_airlines <- reactive({
     filtered_data_dep() %>%
-      filter(Airline %in% input$selected_plot_airlines)  # Filter by selected airlines for Satisfaction Ratio plot
+      filter(Airline %in% input$selected_plot_airlines)
   })
   
   # Reactive filtered data for destination
@@ -324,11 +365,48 @@ server <- function(input, output) {
       filter(Destination == input$Destination, 
              date >= as.Date(input$date_range_dest[1]) & date <= as.Date(input$date_range_dest[2]))
   })
+  
   filtered_data_dest_airlines <- reactive({
     filtered_data_dest() %>%
-      filter(Airline %in% input$selected_airlines)  # Filter by selected airlines for Satisfaction Ratio plot
+      filter(Airline %in% input$selected_airlines)
   })
-  # Render plots (Satisfaction, Word Cloud, Rating Features)
+  
+  # Reactive expression for embeddings and clustering
+  review_embeddings <- reactive({
+    req(input$Airline)
+    
+    # Filter reviews for selected airline
+    airline_data <- data %>%
+      filter(Airline == input$Airline)
+    
+    # Determine number of reviews to sample based on user input
+    n_sample <- min(nrow(airline_data), input$sample_size)
+    sampled_reviews <- airline_data %>% 
+      sample_n(n_sample)
+    
+    # Get embeddings using the global model
+    withProgress(message = 'Creating embeddings...', {
+      embeddings <- get_embeddings(sampled_reviews$Review)
+    })
+    
+    # Create UMAP clustering using fixed parameters
+    withProgress(message = 'Clustering...', {
+      umap_result <- create_clustering(
+        embeddings, 
+        n_neighbors = 15,      # constant value
+        min_dist = 0.1         # constant value
+      )
+    })
+    
+    # Return clustering results as a dataframe
+    data.frame(
+      UMAP1 = umap_result$layout[,1],
+      UMAP2 = umap_result$layout[,2],
+      Review = sampled_reviews$Review,
+      Rating = sampled_reviews$Rating
+    )
+  })
+  
   output$satisfaction_plot <- renderPlot({
     ggplot(filtered_data(), aes(x = date, y = satisfaction_ratio)) +
       geom_line(color = "blue", size = 1) +
@@ -337,11 +415,13 @@ server <- function(input, output) {
            x = "Month", y = "Satisfaction Ratio") +
       theme_minimal()
   })
+  
   output$word_cloud <- renderPlot({
     generate_wordcloud(data, input$Airline)
   })
+  
   output$rank_satisfaction <- renderPlot({
-    start_date <- as.Date(input$date_range[1])  # Keep as Date
+    start_date <- as.Date(input$date_range[1])
     end_date <- as.Date(input$date_range[2])
     
     filtered_rank_data <- data_g1 %>%
@@ -358,7 +438,7 @@ server <- function(input, output) {
            x = "Month", y = input$rating_feature) +
       theme_minimal()
   })
-  # Plot: Satisfaction Ratio Evolution by Departure (with selected airlines)
+  
   output$satisfaction_dep_plot <- renderPlot({
     departure_data <- filtered_data_dep_airlines()
     
@@ -372,18 +452,16 @@ server <- function(input, output) {
         geom_point() +
         labs(title = paste("Rating Evolution for Departure:", input$Departure),
              x = "Month", y = "Average Rating") +
-        scale_y_continuous(limits = c(0, 5), breaks = seq(0, 5, 1)) +  # Set y-axis from 0 to 5 with breaks
+        scale_y_continuous(limits = c(0, 5), breaks = seq(0, 5, 1)) +
         theme_minimal() +
         theme(legend.position = "bottom")
     }
   })
   
-  # Plot: Ratings by Feature for Departure (average rating per airline for the selected feature)
   output$rating_feature_dep_plot <- renderPlot({
     departure_data <- filtered_data_dep()
     selected_feature <- input$rating_feature_dep
     
-    # Group by Airline and calculate average rating for selected feature
     avg_ratings <- departure_data %>%
       group_by(Airline) %>%
       summarize(avg_rating = mean(.data[[selected_feature]], na.rm = TRUE))
@@ -397,12 +475,11 @@ server <- function(input, output) {
         geom_bar(stat = "identity", position = "dodge") +
         labs(title = paste("Comparison of", selected_feature, "for Departure:", input$Departure),
              x = "Airline", y = paste("Average", selected_feature)) +
-        scale_y_continuous(limits = c(0, 5), breaks = seq(0, 5, 1)) +  # Set y-axis from 0 to 5 with breaks
+        scale_y_continuous(limits = c(0, 5), breaks = seq(0, 5, 1)) +
         theme_minimal()
     }
   })
   
-  # Plot: Satisfaction Ratio Evolution by Destination (with selected airlines)
   output$satisfaction_dest_plot <- renderPlot({
     destination_data <- filtered_data_dest_airlines()
     
@@ -416,18 +493,16 @@ server <- function(input, output) {
         geom_point() +
         labs(title = paste("Rating Evolution for Destination:", input$Destination),
              x = "Month", y = "Average Rating") +
-        scale_y_continuous(limits = c(0, 5), breaks = seq(0, 5, 1)) +  # Set y-axis from 0 to 5 with breaks
+        scale_y_continuous(limits = c(0, 5), breaks = seq(0, 5, 1)) +
         theme_minimal() +
         theme(legend.position = "bottom")
     }
   })
   
-  # Plot: Ratings by Feature for Destination (average rating per airline for the selected feature)
   output$rating_feature_dest_plot <- renderPlot({
     destination_data <- filtered_data_dest()
     selected_feature <- input$rating_feature_dest
     
-    # Group by Airline and calculate average rating for selected feature
     avg_ratings <- destination_data %>%
       group_by(Airline) %>%
       summarize(avg_rating = mean(.data[[selected_feature]], na.rm = TRUE))
@@ -441,14 +516,56 @@ server <- function(input, output) {
         geom_bar(stat = "identity", position = "dodge") +
         labs(title = paste("Comparison of", selected_feature, "for Destination:", input$Destination),
              x = "Airline", y = paste("Average", selected_feature)) +
-        scale_y_continuous(limits = c(0, 5), breaks = seq(0, 5, 1)) +  # Set y-axis from 0 to 5 with breaks
+        scale_y_continuous(limits = c(0, 5), breaks = seq(0, 5, 1)) +
         theme_minimal()
     }
+  })
+  
+  output$clustering_plot <- renderPlotly({
+    req(review_embeddings())
+    
+    # Convert Rating to factor for discrete coloring
+    clustered_data <- review_embeddings()
+    clustered_data$Rating <- factor(clustered_data$Rating)
+    
+    plot_ly(data = clustered_data,
+            x = ~UMAP1,
+            y = ~UMAP2,
+            type = "scatter",
+            mode = "markers",
+            color = ~Rating,            # Map color to factor(Rating)
+            colors = "Set1",            # Choose a discrete color palette
+            text = ~Review,
+            hovertemplate = paste(
+              "<span style='text-align:left;white-space:normal;display:block;width:300px;height:auto;'>",
+              "<b>Rating:</b> %{marker.color}<br>",
+              "<b>Review:</b><br>%{text}",
+              "</span><extra></extra>"
+            )
+    ) %>%
+      layout(
+        title = paste("Review Clustering for", input$Airline),
+        xaxis = list(title = "UMAP Dimension 1"),
+        yaxis = list(title = "UMAP Dimension 2"),
+        hoverlabel = list(
+          bgcolor = "white",
+          font = list(color = "black"),
+          align = "left",
+          width = 300
+        ),
+        legend = list(
+          title = list(text = "<b>Rating Levels</b>"),  # Bold title for the legend
+          x = 1.02,    # Position legend to the right of the plot
+          y = 1,       # Align legend with the top of the plot
+          bgcolor = 'rgba(255, 255, 255, 0.5)', # Semi-transparent white background
+          bordercolor = 'black',                # Border color for legend
+          borderwidth = 1,
+          orientation = "v"  # Vertical orientation
+        ),
+        margin = list(r = 150)  # Increase right margin to accommodate legend
+      )
   })
 }
 
 # Run the Shiny app
 shinyApp(ui, server)
-
-
-
