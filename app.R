@@ -36,11 +36,7 @@ library(threejs)
 
 # Load and preprocess data
 # check if file is on the local machine
-if (file.exists("data/data_ugc.csv")) {
-  data <- fread("data/data_ugc.csv")
-} else {
-  data <- fread("https://github.com/dorianb04/airline-ucg/raw/refs/heads/main/data/data_ugc.csv?download=")
-}
+data <- fread("https://github.com/dorianb04/airline-ucg/raw/refs/heads/main/data/data_ugc.csv?download=")
 
 # Convert 'Review Rate' to date format
 data$date <- format(floor_date(data$`Review Rate`, "month"), "%Y-%m")
