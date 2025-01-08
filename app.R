@@ -41,6 +41,8 @@ data <- fread("data/data_ugc.csv")
 data$date <- format(floor_date(data$`Review Rate`, "month"), "%Y-%m")
 data$date <- as.Date(paste0(data$date, "-01"), format = "%Y-%m-%d")
 
+print(head(data))
+
 # Summarize data by Airline and date
 data_g1 <- data %>%
   group_by(Airline, date) %>%
