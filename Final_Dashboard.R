@@ -136,16 +136,20 @@ rank_satisfaction <- function(data, start_date, end_date) {
     mutate(rank = row_number()) %>%
     ungroup()
   
-  ggplot(ranked_data, aes(x = reorder(Airline, rank), y = avg_satisfaction_ratio)) +
-    geom_line(group = 1, color = "red") +
-    geom_point(color = "red") +
+  ggplot(ranked_data, aes(x = reorder(Airline, rank), y = avg_satisfaction_ratio, fill = Airline)) +
+    geom_bar(stat = "identity", color = "black", show.legend = FALSE) +
+    scale_fill_brewer(palette = "Pastel1") +  # Use a pastel color palette
     labs(
       title = "Rank of Satisfaction Ratio (during selected period)",
       x = "Companies (Ranked by Order)",
       y = "Average Satisfaction Ratio"
     ) +
     theme_minimal() +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1),
+      panel.grid.minor = element_blank(),
+      panel.grid.major = element_line(color = "gray90")
+    )
 }
 
 # Updated get_embeddings function using the globally loaded model
@@ -170,7 +174,7 @@ create_clustering <- function(embeddings, n_neighbors = 15, min_dist = 0.1) {
 }
 
 ##########################################
-# UI Definition
+# UI
 ui <- dashboardPage(
   dashboardHeader(title = 'Choose your Airline'),
   dashboardSidebar(
