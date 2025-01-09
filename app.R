@@ -308,6 +308,18 @@ ui <- dashboardPage(
         fluidRow(
           column(12,
                  box(
+                   title = "Topic Impact Analysis",
+                   status = "primary",
+                   solidHeader = TRUE,
+                   width = 12,
+                   height="600px",
+                   plotlyOutput("topic_impact_plot", height="530px")
+                 )
+          )
+        ),
+        fluidRow(
+          column(12,
+                 box(
                    title = "Satisfaction Ratio Evolution", status = "primary", solidHeader = TRUE,
                    width = 12,
                    plotOutput("satisfaction_plot")
@@ -736,6 +748,93 @@ server <- function(input, output, session) {
         bargap = 0.2
       ) %>%
       config(displayModeBar = FALSE)
+  })
+  
+  # Add this in the server section
+  output$topic_impact_plot <- renderPlotly({
+    req(input$Airline)
+    
+    # Read the data
+    df <- read.csv(paste0("data/topic_clustering/", input$Airline, "_plot_data.csv"))
+    
+    # Convert topics to dummy variables without intercept
+    topic_dummies <- model.matrix(~ topic - 1, data = df)
+    
+    # Combine the dummy variables with ratings
+    regression_data <- cbind(
+      rating = df$rating,
+      as.data.frame(topic_dummies)
+    )
+    
+    # Run OLS regression
+    model <- lm(rating ~ ., data = regression_data)
+    
+    # Get summary of results
+    summary_stats <- summary(model)
+    
+    # Create a data frame of coefficients with their significance
+    coef_df <- data.frame(
+      coefficient = coef(summary_stats)[, "Estimate"],
+      std.error = coef(summary_stats)[, "Std. Error"],
+      p_value = coef(summary_stats)[, "Pr(>|t|)"]
+    ) %>%
+      tibble::rownames_to_column("topic") %>%
+      mutate(
+        significant = p_value < 0.05,
+        topic = gsub("topic", "", topic)  # Clean topic names
+      ) %>%
+      arrange(coefficient)
+    
+    # Create and display the plot
+    plot_ly(
+      data = coef_df,
+      x = ~coefficient,
+      y = ~reorder(topic, coefficient),
+      color = ~ifelse(significant, "Significant", "Not Significant"),
+      colors = c("Significant" = "#2ECC71", 
+                 "Not Significant" = "darkgray"),
+      customdata = ~p_value
+    ) %>%
+      add_trace(
+        type = 'bar',
+        orientation = 'h',
+        error_x = list(
+          type = 'data',
+          array = ~1.96 * std.error,
+          color = '#444444',
+          width = 0
+        ),
+        hovertemplate = paste(
+          "<b>Topic:</b> %{y}<br>",
+          "Impact: %{x:.3f}<br>",
+          "p-value: %{customdata:.3f}",
+          "<extra></extra>"
+        ),
+        showlegend = TRUE
+      ) %>%
+      layout(
+        title = list(
+          text = "Topic Impact on Customer Satisfaction",
+          font = list(size = 16)
+        ),
+        xaxis = list(
+          title = "Impact on Rating",
+          zeroline = TRUE,
+          zerolinecolor = '#888888',
+          gridcolor = 'rgb(240,240,240)'
+        ),
+        yaxis = list(
+          title = "",
+          zeroline = FALSE,
+          gridcolor = 'rgb(240,240,240)'
+        ),
+        legend = list(
+          title = list(text = "Statistically\nSignificant"),
+          x = 0.95,
+          y = 0.95
+        ),
+        margin = list(l = 150)
+      )
   })
   
   output$airline_globe <- renderGlobe({
