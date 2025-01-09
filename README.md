@@ -1,5 +1,8 @@
-# airline-ucg
+# airline-ugc
 Dashboard for understanding how topics drive satisfaction in airlines
+
+The dashboard is available here:
+[https://0194485b-10c2-92bd-6c51-d14cc0332c97.share.connect.posit.cloud/](https://0194485b-10c2-92bd-6c51-d14cc0332c97.share.connect.posit.cloud/)
 
 ## 1. TODO
 
