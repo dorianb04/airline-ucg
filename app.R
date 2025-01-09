@@ -221,7 +221,7 @@ rank_satisfaction <- function(data, start_date, end_date) {
 ##########################################
 # UI
 ui <- dashboardPage(
-  dashboardHeader(title = 'Choose your Airline'),
+  dashboardHeader(title = 'Airline UGC Analysis'),
   dashboardSidebar(
     sidebarMenu(
       menuItem('Route Network', tabName = 'network', icon = icon("route")),
